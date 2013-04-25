@@ -1,6 +1,5 @@
 require 'tempfile'
 require 'forwardable'
-require 'rbconfig'
 
 # Certain existing libraries have a PDF class; no sense in being unnecessarily
 # incompatible.
@@ -95,7 +94,7 @@ class PDF::Toolkit
     @user_password  = default_user_password
     @permissions    = default_permissions || []
     @new_info       = {}
-    
+
     run_callbacks_for(:after_initialize)
   end
 
@@ -316,10 +315,17 @@ class PDF::Toolkit
     retval = call_pdftk_on_file("dump_data","output","-", :mode => "r") do |pipe|
       pipe.each_line do |line|
         match = line.chomp.match(/(.*?): (.*)/)
-        unless match
-          raise ExecutionError, "Error parsing PDFTK output"
+
+        key = nil
+        value = nil
+
+        if ['InfoBegin', 'PageLabelBegin', 'BookmarkBegin'].include? line.chomp
+          # do nothing
+        elsif !match
+          raise ExecutionError, "Error parsing PDFTK output:\n_#{line}_"
+        else
+          key, value = match[1], match[2]
         end
-        key, value = match[1], match[2]
         # key, value = line.chomp.split(/: /)
         case key
         when 'InfoKey'
